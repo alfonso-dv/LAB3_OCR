@@ -92,6 +92,9 @@ def display_weights_column(weights, layer_names,figure_path,figure_name,figure_f
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1, top=1.0, bottom=0.0, left=0.0, right=1.0)
     subfigs = fig.subfigures(1, n_layers_with_weights)
+    # if there is only one layer with weights, subfigures() returns a single SubFigure
+    if n_layers_with_weights == 1:
+        subfigs = [subfigs]
     layer_index_with_weights = 0
     print("Number of layers: "+str(len(weights)))
     for layer_index in range(0, len(weights)):
@@ -173,7 +176,16 @@ print("Shape before one-hot encoding: ", y_train.shape)
 Y_train = to_categorical(y_train, n_classes)
 Y_test = to_categorical(y_test, n_classes)
 print("Shape after one-hot encoding: ", Y_train.shape)
-n_cnn1planes = 15
+
+# TASK 1: topology parameters
+
+n_cnn_layers = 3
+
+n_cnn1planes = 10
+n_cnn2planes = 20
+n_cnn3planes = 30
+
+
 n_cnn1kernel = 3
 n_poolsize = 1
 
@@ -186,9 +198,20 @@ n_strides = 1
 n_dense = 100
 dropout = 0.3
 
-n_epochs=1
+# CHANGE FROM 1 TO MORE THAN 5
 
-model_name = 'CNN_Handwritten_OCR_CNN'+str(n_cnn1planes)+'_KERNEL'+str(n_cnn1kernel)+'_Epochs' + str(n_epochs)
+n_epochs=20
+
+model_name = (
+    'CNN_T1_'
+    + f'layers{n_cnn_layers}'
+    + f'_p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}'
+    + '_KERNEL' + str(n_cnn1kernel)
+    + '_Epochs' + str(n_epochs)
+)
+# Now every run will produce CNN_T1_layers2_p1_10_p2_20_p3_30_..._loss.png, so you know which is which.
+
+#model_name = 'CNN_Handwritten_OCR_CNN'+str(n_cnn1planes)+'_KERNEL'+str(n_cnn1kernel)+'_Epochs' + str(n_epochs)
 #figure_format='svg'
 figure_format='png'
 figure_path='./'
@@ -196,25 +219,45 @@ log_path='./log'
 
 # building a linear stack of layers with the sequential model
 model = Sequential()
-# convolutional layer
-cnn1 = Conv2D(n_cnn1planes, kernel_size=(n_cnn1kernel,n_cnn1kernel), strides=(n_strides,n_strides), padding='valid', activation='relu', input_shape=(28,28,1))
-model.add(cnn1)
-model.add(MaxPool2D(pool_size=(n_poolsize,n_poolsize)))
+# ----- first conv + pooling block -----
+if n_cnn_layers >= 1:
+    cnn1 = Conv2D(
+        n_cnn1planes,
+        kernel_size=(n_cnn1kernel, n_cnn1kernel),
+        strides=(n_strides, n_strides),
+        padding='valid',
+        activation='relu',
+        input_shape=(28, 28, 1)
+    )
+    model.add(cnn1)
+    model.add(MaxPool2D(pool_size=(n_poolsize, n_poolsize)))
+    # model.add(Dropout(dropout))
 
-#model.add(Dropout(dropout))
+# ----- second conv + pooling block -----
+if n_cnn_layers >= 2:
+    cnn2 = Conv2D(
+        n_cnn2planes,
+        kernel_size=(n_cnn1kernel, n_cnn1kernel),
+        strides=(n_strides, n_strides),
+        padding='valid',
+        activation='relu'
+    )
+    model.add(cnn2)
+    model.add(MaxPool2D(pool_size=(n_poolsize, n_poolsize)))
+    # model.add(Dropout(dropout))
 
-cnn2 = Conv2D(n_cnn1planes*2, kernel_size=(n_cnn1kernel,n_cnn1kernel), strides=(n_strides,n_strides), padding='valid', activation='relu')
-model.add(cnn2)
-model.add(MaxPool2D(pool_size=(n_poolsize,n_poolsize)))
-
-#model.add(Dropout(dropout))
-
-cnn3 = Conv2D(n_cnn1planes*4, kernel_size=(n_cnn1kernel,n_cnn1kernel), strides=(n_strides,n_strides), padding='valid', activation='relu')
-model.add(cnn3)
-model.add(MaxPool2D(pool_size=(n_poolsize,n_poolsize)))
-
-#model.add(Dropout(dropout))
-
+# ----- third conv + pooling block -----
+if n_cnn_layers >= 3:
+    cnn3 = Conv2D(
+        n_cnn3planes,
+        kernel_size=(n_cnn1kernel, n_cnn1kernel),
+        strides=(n_strides, n_strides),
+        padding='valid',
+        activation='relu'
+    )
+    model.add(cnn3)
+    model.add(MaxPool2D(pool_size=(n_poolsize, n_poolsize)))
+    # model.add(Dropout(dropout))
 # flatten output of conv
 model.add(Flatten())
 
