@@ -17,7 +17,7 @@ import numpy as np
 import os
 
 def display_classification_report(classification_report, figure_path, figure_name, onscreen=True):
-    f = open(os.path.join(figure_path, figure_name+'.txt'), 'w')
+    f = open(os.path.join(figure_path, figure_name + '.txt'), 'w', encoding='utf-8')
     f.write(classification_report)
     f.close()
 
@@ -38,9 +38,9 @@ def display_confusion_matrix(confusion_matrix, labels, figure_path,figure_name,f
           plt.show()
        else:
           print("Non-interactive backend; figure saved but not shown.")
-          plt.close(fig)
+          plt.close()
     else:
-       plt.close(fig)
+       plt.close()
 
 def display_activations(input, label, activations, layer_names, figure_path, figure_name, figure_format, onscreen=True):
     fig = plt.figure(layout='constrained', figsize=(10, 8))
@@ -202,13 +202,40 @@ dropout = 0.3
 
 n_epochs=20
 
+
+# für task 1, auskomenntieren, wenn du task 1 testen willst
+# model_name = (
+#     'CNN_T1_'
+#     + f'layers{n_cnn_layers}'
+#     + f'_p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}'
+#     + '_KERNEL' + str(n_cnn1kernel)
+#     + '_Epochs' + str(n_epochs)
+# )
+
+# ============================================================
+# TASK 2: LEARNING RATE
+# ============================================================
+# Task 2.1: Learning rate controls the step size of weight updates
+# Task 2.2: Use SGD as optimizer
+# Task 2.3: Learning rate will be varied between [0.001, 0.01]
+# Task 2.4: model_name includes learning rate for identification
+
+learning_rate = 0.01   # <- diesen Wert änderst du für die 4 Runs, 0.001, 0.003, 0.005, 0.01
+
 model_name = (
-    'CNN_T1_'
+    'CNN_T2_LR_' + str(learning_rate) + '_'
     + f'layers{n_cnn_layers}'
     + f'_p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}'
     + '_KERNEL' + str(n_cnn1kernel)
     + '_Epochs' + str(n_epochs)
 )
+
+optimizer = SGD(learning_rate=learning_rate)
+
+
+
+
+
 # Now every run will produce CNN_T1_layers2_p1_10_p2_20_p3_30_..._loss.png, so you know which is which.
 
 #model_name = 'CNN_Handwritten_OCR_CNN'+str(n_cnn1planes)+'_KERNEL'+str(n_cnn1kernel)+'_Epochs' + str(n_epochs)
@@ -274,8 +301,10 @@ model.add(Dense(n_classes, activation='softmax'))
 model_name += '_Optimzer_' + 'SGD'
 
 # vary the constant learning rate
-model_name += '_LearningRate_' + 'Constant'
-learning_rate = 0.001
+#task 1
+#model_name += '_LearningRate_' + 'Constant'
+#learning_rate = 0.001
+
 
 # OR use a learning rate scheduler that adapts the learning rate over the epochs of the training process
 # https://keras.io/2.15/api/optimizers/learning_rate_schedules/
@@ -284,8 +313,9 @@ learning_rate = 0.001
 #learning_rate = ExponentialDecay(initial_learning_rate=1e-2, decay_steps=n_epochs, decay_rate=0.9)
 
 #learning_rate=0.01
-momentum = 0.9
-optimizer=SGD(learning_rate = learning_rate, momentum = momentum)
+#task 1
+#momentum = 0.9
+#optimizer=SGD(learning_rate = learning_rate, momentum = momentum)
 
 #optimizer=Adam(learning_rate = learning_rate)
 
@@ -293,7 +323,15 @@ optimizer=SGD(learning_rate = learning_rate, momentum = momentum)
 #learning_rate = 0.01
 #optimizer=SGD(learning_rate=learning_rate)
 
-model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizer)
+#task 1
+#model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizer)
+
+#task 2
+model.compile(
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
+    optimizer=optimizer
+)
 
 layer_names = [layer.name for layer in model.layers[:8]]
 
@@ -336,8 +374,5 @@ stringlist = []
 model.summary(print_fn=lambda x: stringlist.append(x))
 model_summary = "\n".join(stringlist)
 display_classification_report(model_summary, figure_path, figure_name)
-
-
-
 
 
