@@ -200,7 +200,7 @@ dropout = 0.3
 
 # CHANGE FROM 1 TO MORE THAN 5
 
-n_epochs=2
+n_epochs=3
 
 
 # für task 1, auskomenntieren, wenn du task 1 testen willst
@@ -212,44 +212,6 @@ n_epochs=2
 #     + '_Epochs' + str(n_epochs)
 # )
 
-
-
-# ============================================================
-# GLOBAL FIGURE SETTINGS (needed for Task 3)
-# ============================================================
-
-figure_format = 'png'
-
-# ============================
-# Task 3 output folder
-# ============================
-figure_path = './task3/'
-os.makedirs(figure_path, exist_ok=True)
-
-# ============================================================
-# TASK 3: MODEL DEFINITION (same architecture as Task 2)
-# ============================================================
-
-model = Sequential()
-
-if n_cnn_layers >= 1:
-    model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
-                     activation='relu', input_shape=(28, 28, 1)))
-    model.add(MaxPool2D())
-
-if n_cnn_layers >= 2:
-    model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
-                     activation='relu'))
-    model.add(MaxPool2D())
-
-if n_cnn_layers >= 3:
-    model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
-                     activation='relu'))
-    model.add(MaxPool2D())
-
-model.add(Flatten())
-model.add(Dense(n_dense, activation='relu'))
-model.add(Dense(n_classes, activation='softmax'))
 # ============================================================
 # TASK 2: LEARNING RATE
 # ============================================================
@@ -413,50 +375,75 @@ model.summary(print_fn=lambda x: stringlist.append(x))
 model_summary = "\n".join(stringlist)
 display_classification_report(model_summary, figure_path, figure_name)
 
+
+
+
+
 # ============================================================
-# TASK 3: LEARNING RATE SCHEDULE (MANUELL, KORREKT)
+# TASK 3: LEARNING RATE SCHEDULES (SGD + ExponentialDecay)
 # ============================================================
 
+from keras.models import Sequential
+from keras.layers import Conv2D, MaxPool2D, Flatten, Dense
+from keras.optimizers import SGD
+from keras.optimizers.schedules import ExponentialDecay
+import os
+
+# --- eigener Output-Ordner nur für Task 3 ---
 figure_path = './task3/'
 os.makedirs(figure_path, exist_ok=True)
+figure_format = 'png'
 
 # ------------------------------------------------------------
-# MANUELLER PARAMETER (für jeden Lauf ändern!)
-# erlaubt: 0.001 | 0.01 | 0.05 | 0.1
+# MANUELL: pro Run ändern (mind. 4 Werte insgesamt testen)
 # ------------------------------------------------------------
-initial_lr = 0.07
+initial_lr = 0.1   # 0.001 | 0.01 | 0.05 | 0.1
 
-# ============================================================
-# NEUES MODELL (wichtig für fairen Vergleich)
-# ============================================================
+batch_size = 128
+
+# IMPORTANT: decay_steps zählt "optimizer steps" (Batches), nicht Epochen!
+steps_per_epoch = X_train.shape[0] // batch_size
+
+learning_rate = ExponentialDecay(
+    initial_learning_rate=initial_lr,
+    decay_steps=steps_per_epoch,   # => ungefähr pro Epoche decay
+    decay_rate=0.9
+)
+
+# ------------------------------------------------------------
+# NEUES MODELL (frische Gewichte für fairen Vergleich!)
+# (Architektur ident zu Task 2)
+# ------------------------------------------------------------
 model = Sequential()
 
 if n_cnn_layers >= 1:
     model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
                      activation='relu', input_shape=(28, 28, 1)))
-    model.add(MaxPool2D(pool_size=(2, 2)))
+    model.add(MaxPool2D())
 
 if n_cnn_layers >= 2:
     model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
                      activation='relu'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
+    model.add(MaxPool2D())
 
 if n_cnn_layers >= 3:
     model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
                      activation='relu'))
-    model.add(MaxPool2D(pool_size=(2, 2)))
+    model.add(MaxPool2D())
 
 model.add(Flatten())
 model.add(Dense(n_dense, activation='relu'))
 model.add(Dense(n_classes, activation='softmax'))
 
-# ============================================================
-# LEARNING RATE SCHEDULE
-# ============================================================
-learning_rate = ExponentialDecay(
-    initial_learning_rate=initial_lr,
-    decay_steps=n_epochs,
-    decay_rate=0.9
+# ------------------------------------------------------------
+# Compile + Train
+# ------------------------------------------------------------
+model_name = (
+    'CNN_T3_ExpDecay_LR_' + str(initial_lr) + '_'
+    + f'layers{n_cnn_layers}'
+    + f'_p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}'
+    + '_KERNEL' + str(n_cnn1kernel)
+    + '_Epochs' + str(n_epochs)
 )
 
 optimizer = SGD(learning_rate=learning_rate)
@@ -467,23 +454,18 @@ model.compile(
     optimizer=optimizer
 )
 
-model_name = f'CNN_T3_ExpDecay_LR_{initial_lr}_Epochs_{n_epochs}'
-
-# ============================================================
-# TRAINING
-# ============================================================
 history = model.fit(
     X_train,
     Y_train,
     validation_split=0.1,
+    batch_size=batch_size,
     epochs=n_epochs,
-    batch_size=128,
     verbose=1
 )
 
-# ============================================================
-# ANALYSE: LOSS (TRAIN + VALIDATION)
-# ============================================================
+# ------------------------------------------------------------
+# REQUIRED: analyse loss (train + validation)
+# ------------------------------------------------------------
 display_loss_function(
     history=history,
     figure_path=figure_path,
@@ -491,3 +473,4 @@ display_loss_function(
     figure_format=figure_format,
     onscreen=True
 )
+
