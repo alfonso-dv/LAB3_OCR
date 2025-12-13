@@ -200,7 +200,7 @@ dropout = 0.3
 
 # CHANGE FROM 1 TO MORE THAN 5
 
-n_epochs=3
+n_epochs=2
 
 
 # für task 1, auskomenntieren, wenn du task 1 testen willst
@@ -471,6 +471,97 @@ display_loss_function(
     figure_path=figure_path,
     figure_name=model_name + '_loss',
     figure_format=figure_format,
+    onscreen=True
+)
+
+# ============================================================
+# TASK 4: OPTIMIZER – SGD WITH MOMENTUM
+# ============================================================
+
+# ----------------------------
+# MANUELLE PARAMETER
+# ----------------------------
+learning_rate = 0.005     # später ändern: 0.001 | 0.003 | 0.005 | 0.01
+momentum = 0.9           # fixer Wert laut Angabe
+
+# ----------------------------
+# OUTPUT-ORDNER
+# ----------------------------
+figure_path = './task4/'
+os.makedirs(figure_path, exist_ok=True)
+figure_format = 'png'
+
+# ----------------------------
+# MODELLNAME (wie Task 2)
+# ----------------------------
+model_name = (
+    'CNN_T4_Momentum_'
+    + f'LR_{learning_rate}_'
+    + f'M_{momentum}_'
+    + f'layers{n_cnn_layers}_'
+    + f'p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}_'
+    + 'KERNEL' + str(n_cnn1kernel)
+    + '_Epochs' + str(n_epochs)
+)
+
+# ----------------------------
+# NEUES MODELL (frische Gewichte!)
+# ----------------------------
+model = Sequential()
+
+if n_cnn_layers >= 1:
+    model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu', input_shape=(28, 28, 1)))
+    model.add(MaxPool2D())
+
+if n_cnn_layers >= 2:
+    model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D())
+
+if n_cnn_layers >= 3:
+    model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D())
+
+model.add(Flatten())
+model.add(Dense(n_dense, activation='relu'))
+model.add(Dense(n_classes, activation='softmax'))
+
+# ----------------------------
+# OPTIMIZER: SGD + MOMENTUM
+# ----------------------------
+optimizer = SGD(
+    learning_rate=learning_rate,
+    momentum=momentum
+)
+
+model.compile(
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
+    optimizer=optimizer
+)
+
+# ----------------------------
+# TRAINING
+# ----------------------------
+history = model.fit(
+    X_train,
+    Y_train,
+    validation_split=0.1,
+    batch_size=128,
+    epochs=n_epochs,
+    verbose=1
+)
+
+# ----------------------------
+# REQUIRED OUTPUT: LOSS PLOT
+# ----------------------------
+display_loss_function(
+    history,
+    figure_path,
+    model_name + '_loss',
+    figure_format,
     onscreen=True
 )
 
