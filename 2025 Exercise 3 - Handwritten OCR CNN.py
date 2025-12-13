@@ -2,7 +2,7 @@ import os
 
 # ===== Matplotlib Backend (Fenster + PNG, kein Tk) =====
 import matplotlib
-matplotlib.use("Qt5Agg")   # MUSS vor pyplot stehen
+matplotlib.use("Agg")   # MUSS vor pyplot stehen
 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -565,3 +565,166 @@ display_loss_function(
     onscreen=True
 )
 
+# ============================================================
+# TASK 5: DROPOUT LAYER (REGULARIZATION)
+# Dropout deaktiviert während des Trainings zufällig Neuronen,
+# um Overfitting zu reduzieren und die Generalisierung zu
+# verbessern
+# ============================================================
+
+# zu testende Dropout-Raten
+dropout_rates = [0.2, 0.3, 0.4, 0.5]
+
+# Ausgabeordner für Task-5-Ergebnisse
+figure_path = './task5/'
+os.makedirs(figure_path, exist_ok=True)
+figure_format = 'png'
+
+#Variablen zur Speicherung des besten Modells
+best_val_accuracy = 0.0
+best_model = None
+best_model_name = None
+
+
+# Für jede Dropout-Konfiguration wid ein neues Modell trainiert
+for dropout_rate in dropout_rates:
+
+    # Modellname enthält die Dropout-Rate zur eindeutigen Identifikation
+    model_name = (
+        'CNN_T5_Dropout_'
+        + f'DR_{dropout_rate}_'
+        + f'layers{n_cnn_layers}_'
+        + f'p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}_'
+        + 'KERNEL' + str(n_cnn1kernel)
+        + '_Epochs' + str(n_epochs)
+    )
+
+    #neues Modell mit frischen Gewichten
+    model = Sequential()
+
+    # ----- Conv Block 1 -----
+    if n_cnn_layers >= 1:
+        model.add(Conv2D(
+            n_cnn1planes,
+            (n_cnn1kernel, n_cnn1kernel),
+            activation='relu',
+            input_shape=(28, 28, 1)
+        ))
+        model.add(MaxPool2D())
+        model.add(Dropout(dropout_rate))
+
+    # ----- Conv Block 2 -----
+    if n_cnn_layers >= 2:
+        model.add(Conv2D(
+            n_cnn2planes,
+            (n_cnn1kernel, n_cnn1kernel),
+            activation='relu'
+        ))
+        model.add(MaxPool2D())
+        # Dropout nach dem Convulation-Block
+        model.add(Dropout(dropout_rate))
+
+    # ----- Conv Block 3 -----
+    if n_cnn_layers >= 3:
+        model.add(Conv2D(
+            n_cnn3planes,
+            (n_cnn1kernel, n_cnn1kernel),
+            activation='relu'
+        ))
+        model.add(MaxPool2D())
+        model.add(Dropout(dropout_rate))
+
+    # Übergang von Feature-Maps zu Vektorform
+    model.add(Flatten())
+
+    # Voll verbundene Klassifikationsschichten
+    model.add(Dense(n_dense, activation='relu'))
+    model.add(Dropout(dropout_rate))
+    model.add(Dense(n_classes, activation='softmax'))
+
+    # Kompilieren des Modells mit SGD-Optimizer
+    optimizer = SGD(learning_rate=learning_rate)
+
+    model.compile(
+        loss='categorical_crossentropy',
+        metrics=['accuracy'],
+        optimizer=optimizer
+    )
+
+    # Training des Modells mit Validierungsanteil
+    history = model.fit(
+        X_train,
+        Y_train,
+        validation_split=0.1,
+        batch_size=128,
+        epochs=n_epochs,
+        verbose=1
+    )
+
+    # ----- Loss plot -----
+    # Darstellung der Trainings- und Validierungs-Loss-Funktion
+    display_loss_function(
+        history,
+        figure_path,
+        model_name + '_loss',
+        figure_format,
+        onscreen=True
+    )
+
+    # ----- Track best model (by validation accuracy) -----
+    # Auswahl des besten Modells anhand der Validierungsgenauigkeit
+    max_val_acc = max(history.history['val_accuracy'])
+    if max_val_acc > best_val_accuracy:
+        best_val_accuracy = max_val_acc
+        best_model = model
+        best_model_name = model_name
+
+
+# ============================================================
+# TASK 6: FINAL ACCURACY EVALUATION
+# Die Evalution erfolgt auf bisher ungesehenen Testdaten.
+# ============================================================
+
+figure_path = './task6/'
+os.makedirs(figure_path, exist_ok=True)
+
+print("Best model selected:", best_model_name)
+print("Best validation accuracy:", best_val_accuracy)
+
+# Predict on test data
+y_test_pred = best_model.predict(X_test)
+
+# Confusion Matrix
+# zeigt korrekte und falsche Klassifikationen pro Klasee
+cm = confusion_matrix(
+    y_test,
+    np.argmax(y_test_pred, axis=1),
+    labels=range(0, n_classes)
+)
+
+figure_name = best_model_name + '_confusion_matrix'
+display_confusion_matrix(
+    cm,
+    range(0, n_classes),
+    figure_path,
+    figure_name,
+    figure_format,
+    onscreen=True
+)
+
+# Classification Report
+# enthält Precision, Recall, F1-Score und Gesamtgenauigkeit
+report = classification_report(
+    y_test,
+    np.argmax(y_test_pred, axis=1),
+    target_names=[str(c) for c in range(0, n_classes)],
+    digits=4
+)
+
+figure_name = best_model_name + '_classification_report'
+display_classification_report(
+    report,
+    figure_path,
+    figure_name,
+    onscreen=True
+)
