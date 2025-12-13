@@ -1,20 +1,31 @@
-# keras imports for the dataset and building our neural network
+import os
+
+# ===== Matplotlib Backend (Fenster + PNG, kein Tk) =====
+import matplotlib
+matplotlib.use("Qt5Agg")   # MUSS vor pyplot stehen
+
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+
+# === Keras / TensorFlow ===
 from keras.datasets import mnist
 from keras.models import Model, Sequential
 from keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, BatchNormalization
 from keras.optimizers.schedules import ExponentialDecay
 from keras import callbacks
 from tensorflow.keras.optimizers import SGD, Adam
-#from keras.utils import np_utils
 from keras.utils import to_categorical
+
+# === Evaluation ===
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-import matplotlib
+
+# === Utils ===
 from datetime import datetime
 import numpy as np
-import os
+
+
+
 
 def display_classification_report(classification_report, figure_path, figure_name, onscreen=True):
     f = open(os.path.join(figure_path, figure_name + '.txt'), 'w', encoding='utf-8')
@@ -24,23 +35,20 @@ def display_classification_report(classification_report, figure_path, figure_nam
     if onscreen:
        print(classification_report)
 
-def display_confusion_matrix(confusion_matrix, labels, figure_path,figure_name,figure_format,onscreen=True):
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+def display_confusion_matrix(confusion_matrix, labels, figure_path, figure_name, figure_format, onscreen=True):
+    fig, ax = plt.subplots()
 
-    disp.plot(cmap=plt.cm.Greys)
+    disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix, display_labels=labels)
+    disp.plot(cmap=plt.cm.Greys, ax=ax)
 
-    plt.savefig(os.path.join(figure_path,figure_name+'.'+figure_format), format=figure_format)
+    fig.savefig(os.path.join(figure_path, figure_name + '.' + figure_format),
+                format=figure_format)
 
     if onscreen:
-       if matplotlib.get_backend().lower() not in ["agg", "pdf", "svg", "ps", "png"]:
-          print("Show confusion matrix on display")
+        plt.show()
 
-          plt.show()
-       else:
-          print("Non-interactive backend; figure saved but not shown.")
-          plt.close()
-    else:
-       plt.close()
+    plt.close(fig)
+
 
 def display_activations(input, label, activations, layer_names, figure_path, figure_name, figure_format, onscreen=True):
     fig = plt.figure(layout='constrained', figsize=(10, 8))
@@ -71,14 +79,9 @@ def display_activations(input, label, activations, layer_names, figure_path, fig
 
     fig.savefig(os.path.join(figure_path,figure_name+'.'+figure_format), format=figure_format)
     if onscreen:
-       if matplotlib.get_backend().lower() not in ["agg", "pdf", "svg", "ps", "png"]:
-          plt.show()
-       else:
-          print("Non-interactive backend; figure saved but not shown.")
-          plt.close(fig)
-    else:
-       plt.close(fig)
+        plt.show()
 
+    plt.close(fig)
 
 
 def display_weights_column(weights, layer_names,figure_path,figure_name,figure_format,onscreen=True):
@@ -118,22 +121,20 @@ def display_weights_column(weights, layer_names,figure_path,figure_name,figure_f
                     axs[i,j].axis("off")
 
             layer_index_with_weights += 1
-    fig.savefig(os.path.join(figure_path,figure_name+'.'+figure_format), format=figure_format)
+    fig.savefig(os.path.join(figure_path, figure_name + '.' + figure_format),
+                format=figure_format)
 
     if onscreen:
-       if matplotlib.get_backend().lower() not in ["agg", "pdf", "svg", "ps", "png"]:
-          plt.show()
-       else:
-          print("Non-interactive backend; figure saved but not shown.")
-          plt.close(fig)
-    else:
-       plt.close(fig)
+        plt.show()
+
+    plt.close(fig)
 
 
-def display_loss_function(history,figure_path,figure_name,figure_format,onscreen=True):
+def display_loss_function(history, figure_path, figure_name, figure_format, onscreen=True):
     loss = history.history['loss']
     val_loss = history.history['val_loss']
     epochs = range(1, len(loss) + 1)
+
     fig = plt.figure()
     plt.plot(epochs, loss, color='red', label='Training loss')
     plt.plot(epochs, val_loss, color='green', label='Validation loss')
@@ -141,16 +142,15 @@ def display_loss_function(history,figure_path,figure_name,figure_format,onscreen
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    fig.savefig(os.path.join(figure_path,figure_name+'.'+figure_format), format=figure_format)
+
+    fig.savefig(os.path.join(figure_path, figure_name + '.' + figure_format),
+                format=figure_format)
+
     if onscreen:
-       print("Show loss on display")
-       if matplotlib.get_backend().lower() not in ["agg", "pdf", "svg", "ps", "png"]:
-          plt.show()
-       else:
-          print("Non-interactive backend; figure saved but not shown.")
-          plt.close(fig)
-    else:
-       plt.close(fig)
+        plt.show()
+
+    plt.close(fig)
+
 
 # loading the dataset
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -200,7 +200,7 @@ dropout = 0.3
 
 # CHANGE FROM 1 TO MORE THAN 5
 
-n_epochs=20
+n_epochs=2
 
 
 # für task 1, auskomenntieren, wenn du task 1 testen willst
@@ -212,6 +212,44 @@ n_epochs=20
 #     + '_Epochs' + str(n_epochs)
 # )
 
+
+
+# ============================================================
+# GLOBAL FIGURE SETTINGS (needed for Task 3)
+# ============================================================
+
+figure_format = 'png'
+
+# ============================
+# Task 3 output folder
+# ============================
+figure_path = './task3/'
+os.makedirs(figure_path, exist_ok=True)
+
+# ============================================================
+# TASK 3: MODEL DEFINITION (same architecture as Task 2)
+# ============================================================
+
+model = Sequential()
+
+if n_cnn_layers >= 1:
+    model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu', input_shape=(28, 28, 1)))
+    model.add(MaxPool2D())
+
+if n_cnn_layers >= 2:
+    model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D())
+
+if n_cnn_layers >= 3:
+    model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D())
+
+model.add(Flatten())
+model.add(Dense(n_dense, activation='relu'))
+model.add(Dense(n_classes, activation='softmax'))
 # ============================================================
 # TASK 2: LEARNING RATE
 # ============================================================
@@ -375,4 +413,81 @@ model.summary(print_fn=lambda x: stringlist.append(x))
 model_summary = "\n".join(stringlist)
 display_classification_report(model_summary, figure_path, figure_name)
 
+# ============================================================
+# TASK 3: LEARNING RATE SCHEDULE (MANUELL, KORREKT)
+# ============================================================
 
+figure_path = './task3/'
+os.makedirs(figure_path, exist_ok=True)
+
+# ------------------------------------------------------------
+# MANUELLER PARAMETER (für jeden Lauf ändern!)
+# erlaubt: 0.001 | 0.01 | 0.05 | 0.1
+# ------------------------------------------------------------
+initial_lr = 0.07
+
+# ============================================================
+# NEUES MODELL (wichtig für fairen Vergleich)
+# ============================================================
+model = Sequential()
+
+if n_cnn_layers >= 1:
+    model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu', input_shape=(28, 28, 1)))
+    model.add(MaxPool2D(pool_size=(2, 2)))
+
+if n_cnn_layers >= 2:
+    model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D(pool_size=(2, 2)))
+
+if n_cnn_layers >= 3:
+    model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
+                     activation='relu'))
+    model.add(MaxPool2D(pool_size=(2, 2)))
+
+model.add(Flatten())
+model.add(Dense(n_dense, activation='relu'))
+model.add(Dense(n_classes, activation='softmax'))
+
+# ============================================================
+# LEARNING RATE SCHEDULE
+# ============================================================
+learning_rate = ExponentialDecay(
+    initial_learning_rate=initial_lr,
+    decay_steps=n_epochs,
+    decay_rate=0.9
+)
+
+optimizer = SGD(learning_rate=learning_rate)
+
+model.compile(
+    loss='categorical_crossentropy',
+    metrics=['accuracy'],
+    optimizer=optimizer
+)
+
+model_name = f'CNN_T3_ExpDecay_LR_{initial_lr}_Epochs_{n_epochs}'
+
+# ============================================================
+# TRAINING
+# ============================================================
+history = model.fit(
+    X_train,
+    Y_train,
+    validation_split=0.1,
+    epochs=n_epochs,
+    batch_size=128,
+    verbose=1
+)
+
+# ============================================================
+# ANALYSE: LOSS (TRAIN + VALIDATION)
+# ============================================================
+display_loss_function(
+    history=history,
+    figure_path=figure_path,
+    figure_name=model_name + '_loss',
+    figure_format=figure_format,
+    onscreen=True
+)
