@@ -751,7 +751,7 @@
 #
 #
 #
-#
+# #
 #
 #
 # #---------------------------------------------TASK 3 START ------------------------------------------------------------------------
@@ -765,12 +765,17 @@
 # from matplotlib.gridspec import GridSpec
 #
 # # === Keras / TensorFlow ===
+# # Importiert die benötigten Keras-Module, um ein CNN aufzubauen:
 # from keras.datasets import mnist
 # from keras.models import Model, Sequential
 # from keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, BatchNormalization
-# from keras.optimizers.schedules import ExponentialDecay
+# # Conv2D erkennt Bildmerkmale, MaxPool2D reduziert Bildgröße, Flatten erzeugt Vektor, Dense führt Klassifikation durch
+#
+# # Importiert die Lernraten-Schedule "ExponentialDecay", die die Lernrate automatisch reduziert:
+# from keras.optimizers.schedules import ExponentialDecay # SGD aktualisiert die Gewichte nach jedem Batch
 # from keras import callbacks
-# from tensorflow.keras.optimizers import SGD, Adam
+# from tensorflow.keras.optimizers import SGD, Adam # SGD aktualisiert die Gewichte nach jedem Batch
+#
 # from keras.utils import to_categorical
 #
 # # === Evaluation ===
@@ -956,7 +961,7 @@
 #
 # # CHANGE FROM 1 TO MORE THAN 5
 #
-# n_epochs=4
+# n_epochs=2
 #
 #
 # # für task 1, auskomenntieren, wenn du task 1 testen willst
@@ -976,92 +981,137 @@
 #
 #
 # # --- eigener Output-Ordner nur für Task 3 ---
-# figure_path = './task3/'
-# os.makedirs(figure_path, exist_ok=True)
-# figure_format = 'png'
+# # Definiert den Ordnerpfad, in dem alle Grafiken von Task 3 gespeichert werden:
+# figure_path = './task3/'  # Alle Loss-Plots von Task 3 landen in diesem Unterordner
+#
+# # Erstellt den Ordner, falls er noch nicht existiert:
+# os.makedirs(figure_path, exist_ok=True)  # exist_ok=True verhindert Fehler, wenn Ordner schon da ist
+#
+# # Legt Dateiformat für gespeicherten Grafiken fest:
+# figure_format = 'png'  # Plots werden als PNG-Bilder gespeichert
+#
 #
 # # ------------------------------------------------------------
 # # MANUELL: pro Run ändern (mind. 4 Werte insgesamt testen)
 # # ------------------------------------------------------------
-# initial_lr = 0.1   # 0.001 | 0.01 | 0.05 | 0.1
+# # Start-Lernrate -> soll für verschiedene Runs geändert werden:
+# initial_lr = 0.1   # = Bsp, auch zb: 0.001 | 0.01 | 0.05 | 0.1
 #
+# # Definiert die Batchgröße: beeinflusst, wie viele Trainingsschritte pro Epoche durchgeführt werden.
 # batch_size = 128
 #
-# # IMPORTANT: decay_steps zählt "optimizer steps" (Batches), nicht Epochen!
-# steps_per_epoch = X_train.shape[0] // batch_size
+# # Berechnet, wie viele Batches pro Epoche entstehen (wichtig für Lernraten-Schedule):
+# steps_per_epoch = X_train.shape[0] // batch_size  # X_train.shape[0]-> Anzahl Trainingsbilder & batch_size: Bilder pro Batch
 #
+#
+# # Erstellt ExponentialDecay-Schedule für Lernrate:
+# # ExponentialDecay sorgt dafür, dass Lernrate im Laufe des Trainings automatisch kleiner wird
 # learning_rate = ExponentialDecay(
-#     initial_learning_rate=initial_lr,
-#     decay_steps=steps_per_epoch,   # => ungefähr pro Epoche decay
-#     decay_rate=0.9
+#     initial_learning_rate=initial_lr,    # Startwert der Lernrate - pro run verändert
+#     decay_steps=steps_per_epoch,         # Nach dieser Anzahl Schritte wird Lernrate reduziert
+#     decay_rate=0.9                       # Multiplikator, um wie viel Lernrate sinkt (0.9 = 10% Reduktion)
 # )
+# # Ergebnis: zu Beginn größere Lernschritte,später kleinere+ stabilere Updates
+#
 #
 # # ------------------------------------------------------------
 # # NEUES MODELL (frische Gewichte für fairen Vergleich!)
-# # (Architektur ident zu Task 2)
 # # ------------------------------------------------------------
-# model = Sequential()
 #
-# if n_cnn_layers >= 1:
-#     model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
-#                      activation='relu', input_shape=(28, 28, 1)))
-#     model.add(MaxPool2D())
 #
-# if n_cnn_layers >= 2:
+# # Erstellt ein neues leeres Modell -> in das Layers nacheinander eingefügt werden
+# model = Sequential() # Sequential: jede Schicht wird linear hintereinander angeordnet
+#
+# # Fügt erste Bild-Erkennungs-Schicht hinzu - sie erkennt einfache Bildmerkmale wie Kanten und Linien
+# if n_cnn_layers >= 1:   # wird nur ausgeführt, wenn mindestens 1 CNN-Layer aktiviert ist
+#     model.add(Conv2D(
+#         n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
+#         activation='relu',  # macht  Modell nicht-linear, damit es auch komplexe Bildmuster lernen kann
+#         input_shape=(28, 28, 1)))
+#
+#     model.add(MaxPool2D())      # verkleinert Bild + behält nur die wichtigsten Merkmale
+#
+#
+# # Fügt zweite Bild-Erkennungs-Schicht hinzu
+# # Hier erkennt das Modell bereits komplexere Muster
+# if n_cnn_layers >= 2:   #falls 2 CNN-Layer aktiviert sind
 #     model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
-#                      activation='relu'))
+#                      activation='relu'))        # 2. Convolution: erkennt komplexere Muster (zb: Kurven, Kombinationen)
 #     model.add(MaxPool2D())
 #
+#
+# # Fügt dritte Convolution-Schicht + Pooling hinzu
+# # Diese Schicht erkennt sehr komplexe Merkmale wie ganze Zahlenformen
 # if n_cnn_layers >= 3:
 #     model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
 #                      activation='relu'))
 #     model.add(MaxPool2D())
 #
-# model.add(Flatten())
-# model.add(Dense(n_dense, activation='relu'))
-# model.add(Dense(n_classes, activation='softmax'))
+#
+# # wandelt 2D-Feature Maps in einen 1D-Vektor um
+# model.add(Flatten())   # damit Dense-Schichten sie verarbeiten können
+#
+# # Fügt eine Rechen-Schicht hinzu, die alle gelernten Bildmerkmale zsmführt
+# model.add(Dense(n_dense, activation='relu'))   # Diese Schicht verarbeitet die Merkmale und bereitet die Entscheidung vor.
+#
+#
+# # Fügt letzte Schicht hinzu, die entscheidet, welche Zahl erkannt wurde:
+# model.add(Dense(n_classes, activation='softmax'))   # gibt für jede Zahl von 0 bis 9 eine Wahrscheinlichkeit aus
+#
 #
 # # ------------------------------------------------------------
 # # Compile + Train
 # # ------------------------------------------------------------
+# # Erstellt einen eindeutigen Modellnamen zur Identifikation des Experiments
 # model_name = (
-#     'CNN_T3_ExpDecay_LR_' + str(initial_lr) + '_'
-#     + f'layers{n_cnn_layers}'
-#     + f'p1{n_cnn1planes}p2{n_cnn2planes}p3{n_cnn3planes}'
-#     + '_KERNEL' + str(n_cnn1kernel)
-#     + '_Epochs' + str(n_epochs)
-# )
+#     'CNN_T3_ExpDecay_LR_' + str(initial_lr) + '_'     # Kennzeichnet Task 3 + ExponentialDecay + verwendete Start-Lernrate
+#     + f'layers{n_cnn_layers}'                         # Gibt an, wie viele Convolution-Layer das Modell besitzt
+#     + f'_p1_{n_cnn1planes}_p2_{n_cnn2planes}_p3_{n_cnn3planes}'   # Speichert Anzahl der Feature-Maps (Filter) pro Conv-Layer
+#     + '_KERNEL' + str(n_cnn1kernel)                   # Gibt Kernelgröße der Convolution-Filter an
+#     + '_Epochs' + str(n_epochs)                       # Speichert Anzahl der Trainings-Epochen
+# )   # Ergebnis: Jede Ausgabedatei enthält alle wichtigen Hyperparameter im Dateinamen
 #
-# optimizer = SGD(learning_rate=learning_rate)
 #
+# # Erstellt SGD-Optimizer mit zuvor definierten ExponentialDecay-Lernratenfunktion.
+# optimizer = SGD(learning_rate=learning_rate)   # SGD aktualisiert Gewichte; die Lernrate ändert sich dynamisch während des Trainings.
+#
+#
+# # Kompiliert das Modell: definiert Loss-Funktion, Metriken und Optimizer.
 # model.compile(
-#     loss='categorical_crossentropy',
-#     metrics=['accuracy'],
-#     optimizer=optimizer
+#     loss='categorical_crossentropy',     # Crossentropy misst Abweichung der vorhergesagten Wahrscheinlichkeiten von den Labels.
+#     metrics=['accuracy'],              # Accuracy zeigt, wie viele Bilder korrekt klassifiziert wurden.
+#     optimizer=optimizer           # Verwendet SGD + ExponentialDecay
 # )
 #
+#
+# # Startet training vom Modell:
 # history = model.fit(
-#     X_train,
-#     Y_train,
-#     validation_split=0.1,
-#     batch_size=batch_size,
-#     epochs=n_epochs,
-#     verbose=1
-# )
+#     X_train,                              # enthält Trainingsbilder
+#     Y_train,                              # Enthält One-Hot-Labels
+#     validation_split=0.1,                 # Reserviert 10% der Daten werden automatisch als Validierungsset verwendet.
+#     batch_size=batch_size,                # gibt an wie viele Bilder gleichzeitig verarbeitet werden, bevor Gewichte aktualisiert werden
+#     epochs=n_epochs,                      # Bestimmt Anzahl der Trainingsdurchläufe.
+#     verbose=1                             # zeigt Trainingsfortschritt pro Epoche an
+# )   # history speichert Verlauf von Training Loss und Validation Loss für jede Epoche
+#
 #
 # # ------------------------------------------------------------
 # # REQUIRED: analyse loss (train + validation)
 # # ------------------------------------------------------------
+# # Erstellt Grafik zur Analyse des Lernverhaltens des Modells-> zeigt, wie sich Fehler während des Trainings entwickelt.
 # display_loss_function(
-#     history=history,
-#     figure_path=figure_path,
-#     figure_name=model_name + '_loss',
-#     figure_format=figure_format,
-#     onscreen=True
-# )
+#     history=history,                       # enthält Trainings- und Validierungs-Loss.
+#     figure_path=figure_path,               # gibt Speicherort des Plots an
+#     figure_name=model_name + '_loss',      # setzt Dateiname des Plots
+#     figure_format=figure_format,           # definiert Dateiformat (PNG)
+#     onscreen=True                          # True zeigt Plot direkt im Fenster an
+# )   #  Grafik zeigt Training Loss vs. Validation Loss
 # #---------------------------------------------TASK 3 END ------------------------------------------------------------------------
 #
+
+
 #
+# #
 #
 # #---------------------------------------------TASK 4 START ------------------------------------------------------------------------
 # import os
@@ -1276,98 +1326,164 @@
 # #     + '_KERNEL' + str(n_cnn1kernel)
 # #     + '_Epochs' + str(n_epochs)
 # # )
+#
+#
+#
 # # ============================================================
 # # TASK 4: OPTIMIZER – SGD WITH MOMENTUM
 # # ============================================================
 #
 # # ----------------------------
-# # MANUELLE PARAMETER
+# # EINSTELLUNG DER TRAININGSPARAMETER
 # # ----------------------------
-# learning_rate = 0.005     # später ändern: 0.001 | 0.003 | 0.005 | 0.01
-# momentum = 0.9           # fixer Wert laut Angabe
+# # Legt Lernrate für diesen Trainingslauf fest:
+# learning_rate = 0.005     # Bestimmt, wie stark Gewichte pro Schritt angepasst werden (wird in mehreren Runs geändert).
+#
+# # Legt Momentum-Wert fest:
+# momentum = 0.9            # Momentum hilft, schneller in richtige Richtung zu lernen (fixer Wert laut Angabe)
+#
 #
 # # ----------------------------
 # # OUTPUT-ORDNER
 # # ----------------------------
-# figure_path = './task4/'
-# os.makedirs(figure_path, exist_ok=True)
-# figure_format = 'png'
+# figure_path = './task4/'   # Definiert Ordner, in dem alle Ergebnisgrafiken von Task 4 gespeichert werden:
+#
+#
+# # Erstellt Ordner, falls er noch nicht existiert
+# os.makedirs(figure_path, exist_ok=True)   # Verhindert Fehler, wenn Ordner bereits vorhanden ist.
+#
+# # Definiert Ausgabeformat von Grafik:
+# figure_format = 'png'             # Grafiken werden als PNG-Dateien gespeichert
+#
 #
 # # ----------------------------
-# # MODELLNAME (wie Task 2)
+# # MODELLNAME ZUR IDENTIFIKATION DES EXPERIMENTS
 # # ----------------------------
+# # Erstellt einen eindeutigen Modellnamen, um diesen Trainingslauf klar zu erkennen
 # model_name = (
-#     'CNN_T4_Momentum_'
-#     + f'LR_{learning_rate}_'
-#     + f'M_{momentum}_'
-#     + f'layers{n_cnn_layers}_'
+#     'CNN_T4_Momentum_'             # Kennzeichnet Task 4 + Verwendung von Momentum
+#     + f'LR_{learning_rate}_'       # Speichert verwendete Lernrate im Namen
+#     + f'M_{momentum}_'             # Speichert Momentum-Wert im Namen
+#     + f'layers{n_cnn_layers}_'     # Gibt an, wie viele Convolution-Layer verwendet werden.
 #     + f'p1_{n_cnn1planes}p2{n_cnn2planes}p3{n_cnn3planes}_'
-#     + 'KERNEL' + str(n_cnn1kernel)
-#     + '_Epochs' + str(n_epochs)
-# )
+#                                    # Speichert Anzahl der Filter pro Convolution-Layer.
+#     + 'KERNEL' + str(n_cnn1kernel) # Gibt Kernelgröße der Convolution-Filter an.
+#     + '_Epochs' + str(n_epochs)    # Speichert Anzahl der Trainings-Epochen
+# )   # Ergebnis: Jede Grafik ist eindeutig einem bestimmten Experiment zugeordnet
+#
+#
 #
 # # ----------------------------
-# # NEUES MODELL (frische Gewichte!)
+# # NEUES MODELL (frische Gewichte)
 # # ----------------------------
-# model = Sequential()
+# # Erstellt ein neues leeers neuronales Netz -> bekommt Schichten Schritt für Schritt
+# model = Sequential()     # Sequential: Schichten werden von oben nach unten hinzugefügt
 #
+#
+# # Fügt erste Bild-Erkennungs-Schicht hinzu.
+# # Modell lernt hier einfache Merkmale wie Kanten und Linien zu erkennen.
 # if n_cnn_layers >= 1:
-#     model.add(Conv2D(n_cnn1planes, (n_cnn1kernel, n_cnn1kernel),
-#                      activation='relu', input_shape=(28, 28, 1)))
-#     model.add(MaxPool2D())
+#     model.add(Conv2D(
+#         n_cnn1planes,                    # Wie viele Bildmerkmale gleichzeitig erkannt werden
+#         (n_cnn1kernel, n_cnn1kernel),    # Größe des Suchfensters im Bild (z.B. 3x3 Pixel).
+#         activation='relu',               # Negative Werte werden ignoriert, positive weitergegeben.
+#         input_shape=(28, 28, 1)           # Eingabebild ist 28x28 Pixel + schwarz-weiß
+#     ))
+#     model.add(MaxPool2D())               # Verkleinert Bild + behält nur wichtigsten Merkmale
 #
+#
+# # Fügt zweite Bild-Erkennungs-Schicht hinzu, falls aktiviert:
+# # Modell erkennt hier komplexere Formen als in der ersten Schicht
 # if n_cnn_layers >= 2:
-#     model.add(Conv2D(n_cnn2planes, (n_cnn1kernel, n_cnn1kernel),
-#                      activation='relu'))
+#     model.add(Conv2D(
+#         n_cnn2planes,                    # Erkennt mehr und komplexere Bildmerkmale
+#         (n_cnn1kernel, n_cnn1kernel),    # Gleiche Fenstergröße wie zuvor
+#         activation='relu'                # hilft dem Netz schneller zu lernen
+#     ))
 #     model.add(MaxPool2D())
 #
+#
+# # Fügt dritte Bild-Erkennungs-Schicht hinzu, falls aktiviert:
+# #  Modell erkennt hier komplexere Formen als in der ersten schicht.
 # if n_cnn_layers >= 3:
-#     model.add(Conv2D(n_cnn3planes, (n_cnn1kernel, n_cnn1kernel),
-#                      activation='relu'))
+#     model.add(Conv2D(
+#         n_cnn3planes,                    # Erkennt sehr komplexe Formen
+#         (n_cnn1kernel, n_cnn1kernel),    # Fenstergröße bleibt gleich
+#         activation='relu'                # aktiviert nur sinnvolle Werte
+#     ))
 #     model.add(MaxPool2D())
 #
-# model.add(Flatten())
-# model.add(Dense(n_dense, activation='relu'))
-# model.add(Dense(n_classes, activation='softmax'))
+#
+# # Wandelt Bilddaten in eine einfache Zahlenliste um:
+# model.add(Flatten())    # damit kann Netz Bildinfos weiterverarbeiten
+#
+# # Fügt Rechen-Schicht hinzu, die alle Bildmerkmale kombiniert:
+# model.add(Dense(
+#     n_dense,            # Anzahl der Recheneinheiten in dieser Schicht
+#     activation='relu'   # erlaubt dem Netz, Zusammenhänge zu lernen
+# ))
+#
+# # Fügt letzte Schicht hinzu, die die Zahl vorhersagt:
+# model.add(Dense(
+#     n_classes,          #  Ausgabe für jede Ziffer von 0 bis 9
+#     activation='softmax' # Gibt an, welche Zahl am wahrscheinlichsten ist
+# ))
+#
+#
 #
 # # ----------------------------
 # # OPTIMIZER: SGD + MOMENTUM
 # # ----------------------------
+#
+# # Erstellt Optimizer für das Training des Modells:
 # optimizer = SGD(
-#     learning_rate=learning_rate,
-#     momentum=momentum
+#     learning_rate=learning_rate,   # gibt an, wie groß Lernschritte sind
+#     momentum=momentum              # Momentum sorgt für gleichmäßigeres +schnelleres Lernen.
 # )
 #
+#
+# # Bereitet Modell für das Training vor:
 # model.compile(
-#     loss='categorical_crossentropy',
-#     metrics=['accuracy'],
-#     optimizer=optimizer
+#     loss='categorical_crossentropy',  # Berechnet den Fehler zw Vorhersage + richtiger Klasse
+#     metrics=['accuracy'],             # zeigt an, wie viele Bilder richtig erkannt wurden
+#     optimizer=optimizer               # Verwendet den zuvor definierten SGD-Optimizer mit Momentum
 # )
 #
+#
+#
 # # ----------------------------
-# # TRAINING
+# # TRAINING DES MODELLS
 # # ----------------------------
+#
+# # Startet Training des neuronalen Netzes:
 # history = model.fit(
-#     X_train,
-#     Y_train,
-#     validation_split=0.1,
-#     batch_size=128,
-#     epochs=n_epochs,
-#     verbose=1
-# )
+#     X_train,               # trainingsbilder, aus denen das Modell lernt
+#     Y_train,                # Richtige Klassen der Trainingsbilder (One-Hot-kodiert)
+#     validation_split=0.1,   # 10 % der Daten werden zur Kontrolle während des Trainings verwendet.
+#     batch_size=128,         # Anzahl der Bilder, die gleichzeitig verarbeitet werden
+#     epochs=n_epochs,        # Gibt an, wie oft alle Trainingsdaten durchlaufen werden
+#     verbose=1               # zeigt den Trainingsfortschritt nach jeder Epoche an
+# )   # history speichert Loss-Werte für Training und Validierung
+#
 #
 # # ----------------------------
-# # REQUIRED OUTPUT: LOSS PLOT
+# # AUSWERTUNG: LOSS-GRAFIK
 # # ----------------------------
+#
+# # Erstellt eine Grafik zur Auswertung des Trainings.
 # display_loss_function(
-#     history,
-#     figure_path,
-#     model_name + '_loss',
-#     figure_format,
-#     onscreen=True
+#     history,                     # enthält gespeicherten Loss-Werte aus dem Training
+#     figure_path,                 # Ordner, in dem Grafik gespeichert wird
+#     model_name + '_loss',         # Name der Grafikdatei
+#     figure_format,               # definiert Ausgabeformat (PNG)
+#     onscreen=True                # zeigt Grafik extra direkt am Bildschirm an
 # )
+#
 # #---------------------------------------------TASK 4 END ------------------------------------------------------------------------
 #
+#
+
+
 #
 # # ---------------------------------------------TASK 5+6 START ------------------------------------------------------------------------
 # import os
